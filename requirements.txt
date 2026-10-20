@@ -1,0 +1,42 @@
+# faiss-cpu==1.7.4
+# tiktoken==0.5.1
+# Core FastAPI and web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+websockets==12.0
+
+# HTTP and data handling
+requests==2.31.0
+python-dotenv==1.0.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# AI and LLM
+ollama==0.1.7
+openai==1.3.7
+anthropic==0.7.8
+# tiktoken==0.5.1
+# Web scraping
+beautifulsoup4==4.12.2
+
+# Database
+redis==5.0.1
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+pymongo==4.6.0
+
+# Vector database and embeddings
+# faiss-cpu==1.7.4
+chromadb==0.4.18
+
+# LangChain
+langchain==0.1.0
+langchain-community==0.0.10
+
+# Additional requirements
+selenium 
+webdriver_manager
+aiosqlite
+gdown

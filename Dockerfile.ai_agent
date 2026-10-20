@@ -1,0 +1,74 @@
+# --------------------
+# Builder stage
+# --------------------
+FROM python:3.10-slim as builder
+
+# Set working directory
+WORKDIR /app
+
+# Install all build tools needed for faiss-cpu and tiktoken
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    swig \
+    curl \
+    unzip \
+    rustc \
+    cargo \
+    python3-dev \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only requirements first for better caching
+COPY requirements.txt .
+
+# Upgrade pip, setuptools, wheel and install requirements
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# Copy the download_blobs.sh script
+COPY download_blobs.sh /app/download_blobs.sh
+RUN chmod +x /app/download_blobs.sh
+RUN /app/download_blobs.sh
+
+# --------------------
+# Production stage
+# --------------------
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy only necessary runtime system tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy source code
+COPY . .
+# Copy the scraped website data file
+COPY scraped_website.json ./scraped_website.json
+
+# Create runtime dirs
+RUN mkdir -p logs
+
+# Environment config
+ENV PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    OLLAMA_MODEL=llama3.2:1b
+
+# Expose service port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=2 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run the startup script
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    
