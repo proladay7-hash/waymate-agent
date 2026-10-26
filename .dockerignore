@@ -1,136 +1,14 @@
-# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
+*.pyc
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
 env/
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# mypy
-.mypy_cache/
-.dmypy.json
-
-# VS Code
-.vscode/
-
-# macOS
-.DS_Store
-
-# Windows
-Thumbs.db
-Desktop.ini
-
-# Git
+venv/
+.venv/
 .git/
 .gitignore
-
-# Local data
-knowledge_base/*
-!knowledge_base/*.md
-
-# Logs
 *.log
-
-# Misc
-*.bak
-*.swp
-*.tmp
-
-# Exclude test files
-test*/
-*.test.*
-
-# Exclude README and docs if not needed
-README.md
-
-# IDE
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-logs/
-
-# Database
-*.db
-*.sqlite
-
-# Temporary files
-*.tmp
-*.temp
-
-# Documentation
-*.md
-
-# Test files
-tests/
-test_*
-*_test.py
-
-# Docker
-Dockerfile*
-docker-compose*
-.dockerignore
-
-# Large data files
-*.bin
-*.pkl
-*.h5
-*.model
-
-# Cache directories
-.cache/
-__pycache__/ 
+.coverage
+htmlcov/
+.pytest_cache/

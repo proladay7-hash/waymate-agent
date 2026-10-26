@@ -1,125 +1,141 @@
 import json
 import os
-import time
-from typing import List, Dict
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-import requests
+import re
+from typing import List, Dict, Any, Optional
 
 class WebsiteScraper:
-    def __init__(self, base_url: str, data_file: str = 'scraped_website.json', wait_selector: str = '#root'):
+    """
+    WayMate Knowledge Base & Search Engine
+    Manages structured information for WayMate (trips, maintenance, navigation, settings, profiles).
+    Supports multi-keyword scored search, tag ranking, and dynamic synchronization with waymate-client.
+    """
+    def __init__(self, base_url: str = "http://localhost:8782", data_file: str = "scraped_website.json"):
         self.base_url = base_url.rstrip('/')
-        self.data_file = data_file
-        self.wait_selector = wait_selector  # CSS selector to wait for
-        self.scraped_data = []
-        self.previous_content = {}
+        self.data_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), data_file)
+        self.scraped_data: List[Dict[str, Any]] = []
+        self.load_data()
+
+    def load_data(self):
+        """Load knowledge base from JSON file"""
         if os.path.exists(self.data_file):
-            with open(self.data_file, 'r', encoding='utf-8') as f:
-                self.scraped_data = json.load(f)
-                self.previous_content = {entry['url']: entry['content'] for entry in self.scraped_data}
-
-    def get_all_urls(self) -> List[str]:
-        # Static routes from frontend
-        static_routes = [
-            '/', '/login', '/register', '/forgot', '/reset', '/about', '/magazine', '/contact', '/help',
-            '/privacy', '/terms', '/cookies', '/categories', '/cart', '/wishlist', '/profile', '/orders', '/payment', '/admin'
-        ]
-        urls = [self.base_url + route for route in static_routes]
-        # Dynamic product routes
-        try:
-            backend_api = 'http://localhost:8080/api/bikes/all'
-            resp = requests.get(backend_api, timeout=10)
-            resp.raise_for_status()
-            bikes = resp.json()
-            for bike in bikes:
-                urls.append(f"{self.base_url}/product/{bike['id']}")
-        except Exception as e:
-            print(f"Failed to fetch bikes for product URLs: {e}")
-        return urls
-
-    def is_loading_content(self, text: str) -> bool:
-        loading_phrases = [
-            'Loading Big Bike Blitz',
-            'Your premium motorcycle experience is loading',
-            'Loading...'
-        ]
-        for phrase in loading_phrases:
-            if phrase.lower() in text.lower():
-                return True
-        return False
-
-    def scrape_urls(self):
-        urls = self.get_all_urls()
-        chrome_options = Options()
-        # chrome_options.add_argument('--headless')  # Run in non-headless mode for debugging
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--window-size=1920,1080')
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        self.scraped_data = []
-
-        # Inject JWT token into localStorage
-        # jwt_token = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTc1MTg5NDg5MCwiZXhwIjoxNzUxOTMwODkwfQ.WW9iCDyfqddNPXYy24zXg_junzgb5eATtWla9-yMmro'
-        # driver.get(self.base_url)
-        # driver.execute_script("window.localStorage.setItem('jwt', arguments[0]);", jwt_token)
-        # driver.refresh()
-
-        for url in urls:
-            print(f"Scraping: {url}")
             try:
-                driver.get(url)
-                try:
-                    WebDriverWait(driver, 3).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, self.wait_selector))
-                    )
-                    time.sleep(3)  # Wait extra for React to render
-                except Exception as e:
-                    print(f"Timeout waiting for content on {url}: {e}")
-                page_source = driver.page_source
-                soup = BeautifulSoup(page_source, 'html.parser')
-                title = soup.title.string.strip() if soup.title and soup.title.string else url
-                for tag in soup(['script', 'style']):
-                    tag.decompose()
-                text = soup.get_text(separator=' ', strip=True)
-                # Skip if content is a loading message or same as previous crawl
-                if self.is_loading_content(text):
-                    print(f"Skipped loading page for {url}")
-                    continue
-                if url in self.previous_content and self.previous_content[url] == text:
-                    print(f"Skipped unchanged content for {url}")
-                    continue
-                self.scraped_data.append({'url': url, 'title': title, 'content': text})
-            except Exception as e:
-                print(f"Failed to scrape {url}: {e}")
-        driver.quit()
-        with open(self.data_file, 'w', encoding='utf-8') as f:
-            json.dump(self.scraped_data, f, ensure_ascii=False, indent=2)
-        print(f"Scraped {len(self.scraped_data)} pages.")
-
-    def search(self, keyword: str, max_results: int = 5) -> List[Dict]:
-        if not self.scraped_data:
-            if os.path.exists(self.data_file):
                 with open(self.data_file, 'r', encoding='utf-8') as f:
                     self.scraped_data = json.load(f)
-            else:
-                print("No scraped data found. Please run scrape_urls() first.")
-                return []
-        results = []
-        for entry in self.scraped_data:
-            if keyword.lower() in entry['content'].lower():
-                results.append(entry)
-                if len(results) >= max_results:
-                    break
-        return results
+            except Exception as e:
+                print(f"[KnowledgeBase] Error loading data file: {e}")
+                self.scraped_data = []
+        else:
+            self.refresh_from_client()
 
-# Example usage:
-# scraper = WebsiteScraper(base_url='http://localhost:5173', wait_selector='#root')
-# scraper.scrape_urls()
-# print(scraper.search('motorcycle')) 
+    def refresh_from_client(self):
+        """Re-generate knowledge from build_waymate_knowledge module"""
+        try:
+            from build_waymate_knowledge import generate_waymate_knowledge
+            self.scraped_data = generate_waymate_knowledge()
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(self.scraped_data, f, ensure_ascii=False, indent=2)
+            print(f"[KnowledgeBase] Refreshed {len(self.scraped_data)} entries from WayMate client")
+        except Exception as e:
+            print(f"[KnowledgeBase] Failed to refresh from client: {e}")
+
+    def scrape_urls(self):
+        """Synchronize with client data"""
+        self.refresh_from_client()
+
+    def search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Scored search engine matching queries against titles, tags, and content.
+        Ranks entries by relevance score instead of brittle literal substring matching.
+        """
+        if not self.scraped_data:
+            self.load_data()
+            if not self.scraped_data:
+                return []
+
+        clean_query = query.lower().strip()
+        if not clean_query:
+            return self.scraped_data[:max_results]
+
+        # Stop words to ignore during scoring
+        stop_words = {
+            'a', 'an', 'the', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'to', 'for', 'with',
+            'of', 'by', 'about', 'can', 'you', 'me', 'my', 'how', 'what', 'which', 'where', 'when',
+            'why', 'do', 'does', 'did', 'i', 'tell', 'show', 'give', 'là', 'của', 'và', 'có', 'trong',
+            'cho', 'với', 'ở', 'được', 'như', 'thế', 'nào', 'gì', 'sao', 'làm'
+        }
+
+        # Tokenize query
+        tokens = [word for word in re.findall(r'[\w\d]+', clean_query) if len(word) > 1 and word not in stop_words]
+        if not tokens:
+            tokens = [clean_query]
+
+        scored_results = []
+        for entry in self.scraped_data:
+            score = 0
+            title = entry.get('title', '').lower()
+            content = entry.get('content', '').lower()
+            metadata = entry.get('metadata', {})
+            tags = [t.lower() for t in metadata.get('tags', [])]
+            category = metadata.get('category', '').lower()
+            doc_type = metadata.get('type', '').lower()
+
+            # Exact phrase match gives huge boost
+            if clean_query in title:
+                score += 50
+            if clean_query in content:
+                score += 30
+
+            # Match individual tokens
+            for token in tokens:
+                # Title matches
+                if token in title:
+                    score += 15
+                # Tags matches
+                if any(token in tag for tag in tags):
+                    score += 20
+                # Category or type matches
+                if token in category or token in doc_type:
+                    score += 10
+                # Content frequency
+                occurrences = content.count(token)
+                if occurrences > 0:
+                    score += min(occurrences * 3, 24)
+
+            # Special keyword associations
+            if any(k in clean_query for k in ['oil', 'nhớt', 'thay nhớt', 'maintenance', 'bảo dưỡng', 'odo', 'km']):
+                if 'maintenance' in title or 'garage' in tags or 'oil' in content:
+                    score += 25
+
+            if any(k in clean_query for k in ['hà giang', 'ha giang', 'mã pí lèng', 'ma pi leng', 'mèo vạc', 'đồng văn']):
+                if 'ha giang' in title or 'ha giang' in tags:
+                    score += 35
+
+            if any(k in clean_query for k in ['đà lạt', 'da lat', 'sài gòn', 'saigon', 'prenn', 'tuyền lâm']):
+                if 'da lat' in title or 'da lat' in tags:
+                    score += 35
+
+            if any(k in clean_query for k in ['google maps', 'bản đồ', 'map', 'navigation', 'gpx', 'gps']):
+                if 'navigation' in title or 'google maps' in title or 'gpx' in content:
+                    score += 25
+
+            if any(k in clean_query for k in ['password', 'mật khẩu', 'quên mật khẩu', 'otp', 'login', 'đăng nhập']):
+                if 'auth' in tags or 'password' in title:
+                    score += 25
+
+            if any(k in clean_query for k in ['mũ bảo hiểm', 'helmet', 'bảo hộ', 'gear', 'safety']):
+                if 'safety' in tags or 'gear' in title:
+                    score += 25
+
+            if score > 0:
+                scored_results.append((score, entry))
+
+        # Sort descending by score
+        scored_results.sort(key=lambda x: x[0], reverse=True)
+
+        results = [entry for _, entry in scored_results[:max_results]]
+        
+        # If no scored match found, fall back to returning default high-priority guides
+        if not results:
+            results = self.scraped_data[:max_results]
+
+        return results

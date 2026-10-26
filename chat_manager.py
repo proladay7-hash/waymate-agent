@@ -28,7 +28,7 @@ class ChatManager:
         # Send welcome message
         welcome_message = {
             "type": "system",
-            "message": "Welcome to BigBikeBlitz AI Assistant! I'm here to help you find the perfect motorcycle and answer any questions about our services.",
+            "message": "Welcome to WayMate AI Agent! 🏍️ I'm your dedicated assistant for adventure trips, route previews, vehicle garage & maintenance, and GPS telemetry. How can I help you today?",
             "timestamp": datetime.now().isoformat()
         }
         await websocket.send_text(json.dumps(welcome_message))

@@ -14,7 +14,7 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def check_model_available(model_name="llama3.2:1b"):
+def check_model_available(model_name="qwen2.5:0.5b"):
     """Check if the model is already available"""
     try:
         result = subprocess.run(["ollama", "list"], capture_output=True, text=True)
@@ -46,7 +46,7 @@ def wait_for_ollama(max_wait=60):
 
 def main():
     """Main initialization function"""
-    model_name = os.environ.get("OLLAMA_MODEL", "llama3.2:1b")
+    model_name = os.environ.get("OLLAMA_MODEL", "qwen2.5:0.5b")
     
     logger.info(f"Initializing model: {model_name}")
     
